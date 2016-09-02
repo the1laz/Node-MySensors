@@ -12,9 +12,11 @@ function MySensors(i) {
   }
 }
 
-MySensors.prototype.connection = {
-  write:function(){console.log("No Gateway");}
-};
+MySensors.prototype = Object.create((require('events').EventEmitter).prototype);
+
+MySensors.prototype.connection = new (require('events').EventEmitter)();
+
+MySensors.prototype.connection.write = function() {console.log("No Gateway");};
 
 MySensors.prototype.nodeId = 255;
 
@@ -22,7 +24,7 @@ MySensors.prototype.fragment = "";
 
 
 MySensors.prototype.parse = function(x) {
-  print(x);
+  // console.log(x);
   var msgs = x.split("\n");
   msgs[0] = this.fragment + msgs[0];
   this.fragment = msgs.pop();
@@ -96,9 +98,9 @@ MySensors.prototype.setMqttGW = function(g,p,s) {
   this.connection = g;
   this.pubtopic = p;
   this.subtopic = s;
-  this.connection.on('message',(function(msg){
-    var parts = msg.topic.split("/").slice(1);
-    this.parse(parts.join(";")+";"+msg.message+"\n")
+  this.connection.on('message',(function(topic,message){
+    var parts = topic.split("/").slice(1);
+    this.parse(parts.join(";")+";"+message+"\n")
   }).bind(this));
   this.send = (function(msg){
     this.connection.publish(
@@ -110,18 +112,19 @@ MySensors.prototype.setMqttGW = function(g,p,s) {
   this.emit('presentation');
 }
 
-MySensors.prototype.setSerialGW = function(g) {
-  this.connection = g;
-  this.connection.on('data',this.parse.bind(this));
-  this.send = (function(msg){
-    var output = msg.nodeId+";"+msg.childSensorId+";"+msg.messageType+";"+msg.ack+";"+msg.subType+";"+JSON.stringify(msg.payload)+"\n";
-    this.connection.write(output);
-  }).bind(this);
-  this.emit('presentation');
-}
+// MySensors.prototype.setSerialGW = function(g) {
+//   this.connection = g;
+//   this.connection.on('data',this.parse.bind(this));
+//   this.send = (function(msg){
+//     var output = msg.nodeId+";"+msg.childSensorId+";"+msg.messageType+";"+msg.ack+";"+msg.subType+";"+JSON.stringify(msg.payload)+"\n";
+//     this.connection.write(output);
+//   }).bind(this);
+//   this.emit('presentation');
+// }
 
 MySensors.prototype.disconnectGW = function() {
-  this.connection = {};
+  this.connection = new (require('events').EventEmitter)();
+  this.connection.write = function() {console.log("No Gateway");};
   this.send = function(){console.log("No Gateway");}
 }
 
